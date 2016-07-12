@@ -32,11 +32,11 @@ import java.util.HashMap;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
+    public static final int MAX_TAG = 3; //MainActivityで表示するタグの数
     GridView mGrid;
     static DBAdapter dbAdapter;
     static List<DBImage> imageList;
 
-    /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -62,10 +62,22 @@ public class MainActivity extends AppCompatActivity {
         mGrid.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             public void onItemClick(AdapterView parent, View v, int position, long id) {
                 Intent objIntent = new Intent(getApplicationContext(),imageDetailActivity.class);
-                objIntent.setData(imageList.get(position).getUri());
+                objIntent.putExtra("image_id", imageList.get(position).getId());
                 startActivity(objIntent);
             }
         });
+    }
+
+    @Override
+    public void onPause(){
+        super.onPause();
+        dbAdapter.close();
+    }
+
+    @Override
+    public void onResume(){
+        super.onResume();
+        dbAdapter.open();
     }
 
     //load Images with Tags from DB
@@ -74,7 +86,10 @@ public class MainActivity extends AppCompatActivity {
         Cursor cursor = dbAdapter.getAllImages();
         if(cursor.moveToFirst()) {
             do {
-                imageList.add(new DBImage(cursor));
+                DBImage image = new DBImage(cursor);
+                int image_id = image.getId();
+                image.addTag(dbAdapter.getTagsByImageID(image_id, MAX_TAG));
+                imageList.add(image);
             } while (cursor.moveToNext());
         }
     }
@@ -157,12 +172,6 @@ public class MainActivity extends AppCompatActivity {
 
         public final long getItemId(int position) {
             return position;
-        }
-
-        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-            Intent objIntent = new Intent(getApplicationContext(),imageDetailActivity.class);
-            objIntent.setData(imageList.get(position).getUri());
-            startActivity(objIntent);
         }
     }
 }

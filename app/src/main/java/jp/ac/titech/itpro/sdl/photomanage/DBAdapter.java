@@ -100,8 +100,15 @@ public class DBAdapter {
     public Cursor getAllImages() {
         return db.query(T_IMAGE_TABLE_NAME, null, null, null, null, null, null);
     }
-    public Cursor getImage(int image_id) {
-        return db.query(T_IMAGE_TABLE_NAME, null, T_IMAGE_COL_ID + "=" + image_id, null, null, null, null);
+    public DBImage getImage(int image_id) {
+        Cursor cursor = db.query(T_IMAGE_TABLE_NAME, null, T_IMAGE_COL_ID + "=" + image_id, null, null, null, null);
+        if(!cursor.moveToNext()){
+            return null;
+        }else{
+            DBImage image =  new DBImage(cursor);
+            image.addTag(this.getAllTagsByImageID(image_id));
+            return image;
+        }
     }
 
     /*
@@ -170,13 +177,29 @@ public class DBAdapter {
     /*
      *  Methods for t_tag
      */
+
     //select
-    public Cursor getTagsByImageID(int image_id, int limit) {
-        return db.query(T_TAG_TABLE_NAME, null, T_TAG_COL_IMAGE_ID + "=" + image_id, null, null, null, null, "LIMIT" + limit);
+    public List<DBTag> getTagsByImageID(int image_id, int limit) {
+        Cursor cursor_tag;
+        if(limit == 0){
+            //limit == 0 -> all
+            cursor_tag =  db.query(T_TAG_TABLE_NAME, null, T_TAG_COL_IMAGE_ID + "=" + image_id, null, null, null, null);
+        }else{
+            cursor_tag =  db.query(T_TAG_TABLE_NAME, null, T_TAG_COL_IMAGE_ID + "=" + image_id, null, null, null, null, ""+ limit);
+        }
+
+        List<DBTag> tags = new ArrayList<DBTag>();
+        if(cursor_tag.moveToFirst()){
+            do{
+                tags.add(new DBTag(cursor_tag));
+            }while(cursor_tag.moveToNext());
+        }
+        return tags;
     }
-    public Cursor getAllTagsByImageID(int image_id) {
-        return db.query(T_TAG_TABLE_NAME, null, T_TAG_COL_IMAGE_ID + "=" + image_id, null, null, null, null);
+    public List<DBTag> getAllTagsByImageID(int image_id) {
+        return this.getTagsByImageID(image_id, 0);
     }
+
     public Cursor getTag(int tag_id) {
         return db.query(T_IMAGE_TABLE_NAME, null, T_TAG_COL_ID + "=" + tag_id, null, null, null, null);
     }

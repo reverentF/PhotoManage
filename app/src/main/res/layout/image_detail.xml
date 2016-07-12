@@ -5,7 +5,7 @@
 
     <ImageView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
         android:id="@+id/imageView"
         android:layout_gravity="center_horizontal"
         android:layout_weight="0.8" />
@@ -34,8 +34,8 @@
                 android:layout_width="722dp"
                 android:layout_height="match_parent"
                 android:textAppearance="?android:attr/textAppearanceSmall"
-                android:text="Tag1 Tag2"
-                android:id="@+id/tag"
+                android:text=""
+                android:id="@+id/tags"
                 android:layout_gravity="center_horizontal"
                 android:gravity="center_vertical"
                 android:layout_weight="1" />
@@ -53,21 +53,21 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Add Tag"
-                android:id="@+id/button"
+                android:id="@+id/bt_addtag"
                 android:layout_weight="0.8" />
 
             <Button
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="AUTO TAG"
-                android:id="@+id/button2"
+                android:id="@+id/bt_autotag"
                 android:layout_weight="0.8" />
 
             <Button
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Tweet"
-                android:id="@+id/button3"
+                android:id="@+id/bt_tweet"
                 android:layout_weight="0.8" />
         </LinearLayout>
 
