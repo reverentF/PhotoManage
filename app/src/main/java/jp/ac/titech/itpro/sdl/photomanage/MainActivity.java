@@ -27,10 +27,14 @@ import android.widget.Toast;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     GridView mGrid;
+    static DBAdapter dbAdapter;
+    static List<DBImage> imageList;
 
     /** Called when the activity is first created. */
     @Override
@@ -45,48 +49,57 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        //レコードの取得
-        Cursor cursor  = new CursorLoader(getApplicationContext(), MediaStore.Images.Media.EXTERNAL_CONTENT_URI, null, null, null, null).loadInBackground();
-
-        cursor.moveToFirst();
-
-        // init for loop
-        int fieldIndex;
-        Long id;
-        int cnt = 0, VolMax = 0;
-        HashMap<Integer, Uri> uriMap = new HashMap<Integer, Uri>(); //URIをMapで管理する
-
-        do {
-            //カラムIDの取得
-            fieldIndex = cursor.getColumnIndex(MediaStore.Images.Media._ID);
-            id = cursor.getLong(fieldIndex);
-
-            //IDからURIを取得
-            Uri bmpUri = ContentUris.withAppendedId(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id);
-            uriMap.put(cnt, bmpUri);
-            cnt++;
-        } while (cursor.moveToNext());
-
-        VolMax = --cnt;
-        cnt = 0;
+        //DB接続
+        dbAdapter = new DBAdapter(this);
+        imageList = new ArrayList<DBImage>();
+        dbAdapter.open();
+        updateDBImages();
+        loadDBImages();
 
         /* Setting GridView */
         mGrid = (GridView) findViewById(R.id.myGrid);
-        mGrid.setAdapter(new myAdapter(getApplicationContext(), uriMap, VolMax));
+        mGrid.setAdapter(new myAdapter(getApplicationContext()));
         mGrid.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            private HashMap<Integer, Uri> uriMap;
-            public AdapterView.OnItemClickListener setUriMap(HashMap<Integer, Uri> uriMap) {
-                this.uriMap = uriMap;
-                return this;
-            }
             public void onItemClick(AdapterView parent, View v, int position, long id) {
                 Intent objIntent = new Intent(getApplicationContext(),imageDetailActivity.class);
-                objIntent.setData(uriMap.get(position));
+                objIntent.setData(imageList.get(position).getUri());
                 startActivity(objIntent);
             }
-        }.setUriMap(uriMap));
+        });
     }
+
+    //load Images with Tags from DB
+    protected void loadDBImages(){
+        imageList.clear();
+        Cursor cursor = dbAdapter.getAllImages();
+        if(cursor.moveToFirst()) {
+            do {
+                imageList.add(new DBImage(cursor));
+            } while (cursor.moveToNext());
+        }
+    }
+
+    //find new Images and update DB
+    protected void updateDBImages(){
+        //レコードの取得
+        Cursor cursor  = new CursorLoader(getApplicationContext(), MediaStore.Images.Media.EXTERNAL_CONTENT_URI, null, null, null, null).loadInBackground();
+        cursor.moveToFirst();
+
+        do {
+            //タイトルを取得
+            int titleCol = cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME);
+            String title = cursor.getString(titleCol);
+            if(!dbAdapter.ExistsImage(title)){
+                //カラムIDの取得
+                int fieldCol = cursor.getColumnIndex(MediaStore.Images.Media._ID);
+                Long id = cursor.getLong(fieldCol);
+                //IDからURIを取得
+                Uri bmpUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id);
+                dbAdapter.insertImage(bmpUri, title);
+            }
+        } while (cursor.moveToNext());
+    }
+
 
     private static class ViewHolder {
         public ImageView hueImageView;
@@ -96,18 +109,14 @@ public class MainActivity extends AppCompatActivity {
     // GridView用のCustomAdapter
     public class myAdapter extends BaseAdapter {
         private ContentResolver cr;
-        private HashMap<Integer, Uri> hm;
         private LayoutInflater mLayoutInflater;
         private int MAX;
         private Bitmap tmpBmp;
         ImageView imageView;
 
 
-        public myAdapter(Context context, HashMap<Integer, Uri> _hm, int max) {
+        public myAdapter(Context context) {
             cr = context.getContentResolver();
-            hm = _hm;
-            // MAX = max;
-            MAX = 30;
             mLayoutInflater = LayoutInflater.from(context);
         }
 
@@ -123,10 +132,11 @@ public class MainActivity extends AppCompatActivity {
                 holder = (ViewHolder)convertView.getTag();
             }
             try {
-                if(position < hm.size()) {
-                    tmpBmp = MediaStore.Images.Media.getBitmap(cr, hm.get(position));
+                if(position < imageList.size()) {
+                    DBImage image = imageList.get(position);
+                    tmpBmp = MediaStore.Images.Media.getBitmap(cr, image.getUri());
                     holder.hueImageView.setImageBitmap(tmpBmp);
-                    holder.hueTextView.setText("test");
+                    holder.hueTextView.setText(image.getTitle());
                 }
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
@@ -138,7 +148,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         public final int getCount() {
-            return hm.size();
+            return imageList.size();
         }
 
         public final Object getItem(int position) {
@@ -151,7 +161,7 @@ public class MainActivity extends AppCompatActivity {
 
         public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
             Intent objIntent = new Intent(getApplicationContext(),imageDetailActivity.class);
-            objIntent.setData(hm.get(position));
+            objIntent.setData(imageList.get(position).getUri());
             startActivity(objIntent);
         }
     }
