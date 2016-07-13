@@ -96,6 +96,8 @@ public class DBAdapter {
     /*
      *  Methods for t_image
      */
+    //TODO Cursor返したりList返したりバラバラだからどちらかに統一
+
     //select
     public Cursor getAllImages() {
         return db.query(T_IMAGE_TABLE_NAME, null, null, null, null, null, null);
@@ -122,25 +124,27 @@ public class DBAdapter {
 
     //find by tag
     public Cursor findImage(String []queries) {
-        //find tag
+        //find tag by query
         String whereStr = "";
         for(String query : queries){
             if(whereStr != ""){
                 whereStr += " AND ";
             }
-            whereStr += T_IMAGE_COL_ID + " LIKE %" + query + "% ";
+            whereStr += T_TAG_COL_VALUE + " LIKE '%" + query + "%' ";
         }
 
         Cursor cursor_tag;
         cursor_tag = db.query(T_TAG_TABLE_NAME, new String[] {T_TAG_COL_IMAGE_ID}, whereStr, null, null, null, null);
         List<Integer> image_ids = new ArrayList<Integer>();
-        do {
-            int col_image_id = cursor_tag.getColumnIndex(T_TAG_COL_IMAGE_ID);
-            int image_id = cursor_tag.getInt(col_image_id);
-            if(!image_ids.contains(image_id)){
-                image_ids.add(image_id);
-            }
-        } while (cursor_tag.moveToNext());
+        if(cursor_tag.moveToFirst()) {
+            do {
+                int col_image_id = cursor_tag.getColumnIndex(T_TAG_COL_IMAGE_ID);
+                int image_id = cursor_tag.getInt(col_image_id);
+                if (!image_ids.contains(image_id)) {
+                    image_ids.add(image_id);
+                }
+            } while (cursor_tag.moveToNext());
+        }
 
         //find image by image_id
         String inStr = " IN ( ";
@@ -153,7 +157,19 @@ public class DBAdapter {
             cnt++;
         }
         inStr += ") ";
-        return db.query(T_IMAGE_TABLE_NAME, null, T_IMAGE_COL_ID + inStr, null, null, null, null);
+        //find image by tag or image_title
+        String imgWhereStr = T_IMAGE_COL_ID + inStr + " OR ( ";
+        boolean isFirst = true;
+        for(String query : queries){
+            if(!isFirst){
+                imgWhereStr += " AND ";
+            }else{
+                isFirst = false;
+            }
+            imgWhereStr += T_IMAGE_COL_TITLE + " LIKE '%" + query + "%' ";
+        }
+        imgWhereStr += " ) ";
+        return db.query(T_IMAGE_TABLE_NAME, null, imgWhereStr, null, null, null, null);
     }
 
     //insert

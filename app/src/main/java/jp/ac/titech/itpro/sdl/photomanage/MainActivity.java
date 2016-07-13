@@ -15,6 +15,9 @@ import android.support.v4.content.ContextCompat;
 import android.support.v4.content.CursorLoader;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatDelegate;
+import android.support.v7.widget.SearchView;
+import android.support.v7.widget.Toolbar;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -32,15 +35,22 @@ import java.util.HashMap;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
+    private AppCompatDelegate delegate;
     public static final int MAX_TAG = 3; //MainActivityで表示するタグの数
     GridView mGrid;
+    SearchView mSearchView;
     static DBAdapter dbAdapter;
     static List<DBImage> imageList;
+    myAdapter gridAdapter;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        //initialize
+        dbAdapter = new DBAdapter(this);
+        imageList = new ArrayList<DBImage>();
 
         //権限の確認
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) !=
@@ -49,16 +59,13 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        //DB接続
-        dbAdapter = new DBAdapter(this);
-        imageList = new ArrayList<DBImage>();
-        dbAdapter.open();
-        updateDBImages();
-        loadDBImages();
 
-        /* Setting GridView */
-        mGrid = (GridView) findViewById(R.id.myGrid);
-        mGrid.setAdapter(new myAdapter(getApplicationContext()));
+        /*
+         *  GridView
+         */
+        mGrid = (GridView)findViewById(R.id.myGrid);
+        gridAdapter = new myAdapter(getApplicationContext());
+        mGrid.setAdapter(gridAdapter);
         mGrid.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             public void onItemClick(AdapterView parent, View v, int position, long id) {
                 Intent objIntent = new Intent(getApplicationContext(),imageDetailActivity.class);
@@ -66,6 +73,39 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(objIntent);
             }
         });
+
+
+        /*
+         *  Search View
+         */
+        Toolbar toolbar = (Toolbar)findViewById(R.id.toolbar);
+        toolbar.inflateMenu(R.menu.search_view);
+
+        mSearchView = (SearchView) toolbar.getMenu().findItem(R.id.menu_search).getActionView();
+        mSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String s) {
+                String[] queries = s.split("[\\s]+"); //スペース区切り
+                findDBImages(queries); //検索
+                return false;
+            }
+            @Override
+            public boolean onQueryTextChange(String s) {
+                if(s.equals("")){
+                    //入力が空 -> 全表示
+                    loadDBImages();
+                }
+                return false;
+            }
+        });
+        mSearchView.setQueryHint("search tags");
+        mSearchView.setIconifiedByDefault(true);
+        mSearchView.setSubmitButtonEnabled(true);
+
+        //DBから画像の読み出し
+        dbAdapter.open();
+        updateDBImages();
+        loadDBImages();
     }
 
     @Override
@@ -92,6 +132,22 @@ public class MainActivity extends AppCompatActivity {
                 imageList.add(image);
             } while (cursor.moveToNext());
         }
+        gridAdapter.notifyDataSetChanged();
+    }
+
+    //find Images by search from DB
+    protected void findDBImages(String[] queries){
+        imageList.clear();
+        Cursor cursor = dbAdapter.findImage(queries);
+        if(cursor.moveToFirst()) {
+            do {
+                DBImage image = new DBImage(cursor);
+                int image_id = image.getId();
+                image.addTag(dbAdapter.getTagsByImageID(image_id, MAX_TAG));
+                imageList.add(image);
+            } while (cursor.moveToNext());
+        }
+        gridAdapter.notifyDataSetChanged();
     }
 
     //find new Images and update DB
@@ -173,5 +229,9 @@ public class MainActivity extends AppCompatActivity {
         public final long getItemId(int position) {
             return position;
         }
+    }
+
+    public boolean onSubmitQuery(String queryText) {
+        return false;
     }
 }
