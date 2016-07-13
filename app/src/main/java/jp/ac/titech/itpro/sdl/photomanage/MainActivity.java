@@ -41,6 +41,8 @@ public class MainActivity extends AppCompatActivity {
     SearchView mSearchView;
     static DBAdapter dbAdapter;
     static List<DBImage> imageList;
+    static List<Bitmap> bitmapList;
+
     myAdapter gridAdapter;
 
     @Override
@@ -51,11 +53,12 @@ public class MainActivity extends AppCompatActivity {
         //initialize
         dbAdapter = new DBAdapter(this);
         imageList = new ArrayList<DBImage>();
+        bitmapList = new ArrayList<Bitmap>();
 
         //権限の確認
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) !=
                 PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_EXTERNAL_STORAGE}, 1203);
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 1203);
             return;
         }
 
@@ -63,12 +66,12 @@ public class MainActivity extends AppCompatActivity {
         /*
          *  GridView
          */
-        mGrid = (GridView)findViewById(R.id.myGrid);
+        mGrid = (GridView) findViewById(R.id.myGrid);
         gridAdapter = new myAdapter(getApplicationContext());
         mGrid.setAdapter(gridAdapter);
         mGrid.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             public void onItemClick(AdapterView parent, View v, int position, long id) {
-                Intent objIntent = new Intent(getApplicationContext(),imageDetailActivity.class);
+                Intent objIntent = new Intent(getApplicationContext(), imageDetailActivity.class);
                 objIntent.putExtra("image_id", imageList.get(position).getId());
                 startActivity(objIntent);
             }
@@ -78,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
         /*
          *  Search View
          */
-        Toolbar toolbar = (Toolbar)findViewById(R.id.toolbar);
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         toolbar.inflateMenu(R.menu.search_view);
 
         mSearchView = (SearchView) toolbar.getMenu().findItem(R.id.menu_search).getActionView();
@@ -89,9 +92,10 @@ public class MainActivity extends AppCompatActivity {
                 findDBImages(queries); //検索
                 return false;
             }
+
             @Override
             public boolean onQueryTextChange(String s) {
-                if(s.equals("")){
+                if (s.equals("")) {
                     //入力が空 -> 全表示
                     loadDBImages();
                 }
@@ -109,22 +113,22 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onPause(){
+    public void onPause() {
         super.onPause();
         dbAdapter.close();
     }
 
     @Override
-    public void onResume(){
+    public void onResume() {
         super.onResume();
         dbAdapter.open();
     }
 
     //load Images with Tags from DB
-    protected void loadDBImages(){
+    protected void loadDBImages() {
         imageList.clear();
         Cursor cursor = dbAdapter.getAllImages();
-        if(cursor.moveToFirst()) {
+        if (cursor.moveToFirst()) {
             do {
                 DBImage image = new DBImage(cursor);
                 int image_id = image.getId();
@@ -132,14 +136,15 @@ public class MainActivity extends AppCompatActivity {
                 imageList.add(image);
             } while (cursor.moveToNext());
         }
+        updateBitMapList();
         gridAdapter.notifyDataSetChanged();
     }
 
     //find Images by search from DB
-    protected void findDBImages(String[] queries){
+    protected void findDBImages(String[] queries) {
         imageList.clear();
         Cursor cursor = dbAdapter.findImage(queries);
-        if(cursor.moveToFirst()) {
+        if (cursor.moveToFirst()) {
             do {
                 DBImage image = new DBImage(cursor);
                 int image_id = image.getId();
@@ -147,20 +152,21 @@ public class MainActivity extends AppCompatActivity {
                 imageList.add(image);
             } while (cursor.moveToNext());
         }
+        updateBitMapList();
         gridAdapter.notifyDataSetChanged();
     }
 
     //find new Images and update DB
-    protected void updateDBImages(){
+    protected void updateDBImages() {
         //レコードの取得
-        Cursor cursor  = new CursorLoader(getApplicationContext(), MediaStore.Images.Media.EXTERNAL_CONTENT_URI, null, null, null, null).loadInBackground();
+        Cursor cursor = new CursorLoader(getApplicationContext(), MediaStore.Images.Media.EXTERNAL_CONTENT_URI, null, null, null, null).loadInBackground();
         cursor.moveToFirst();
 
         do {
             //タイトルを取得
             int titleCol = cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME);
             String title = cursor.getString(titleCol);
-            if(!dbAdapter.ExistsImage(title)){
+            if (!dbAdapter.ExistsImage(title)) {
                 //カラムIDの取得
                 int fieldCol = cursor.getColumnIndex(MediaStore.Images.Media._ID);
                 Long id = cursor.getLong(fieldCol);
@@ -191,28 +197,21 @@ public class MainActivity extends AppCompatActivity {
             mLayoutInflater = LayoutInflater.from(context);
         }
 
-        public View getView(int position, View convertView, ViewGroup parent){
+        public View getView(int position, View convertView, ViewGroup parent) {
             ViewHolder holder;
             if (convertView == null) {
                 convertView = mLayoutInflater.inflate(R.layout.grid_item, null);
                 holder = new ViewHolder();
-                holder.hueImageView = (ImageView)convertView.findViewById(R.id.hue_imageview);
-                holder.hueTextView = (TextView)convertView.findViewById(R.id.hue_textview);
+                holder.hueImageView = (ImageView) convertView.findViewById(R.id.hue_imageview);
+                holder.hueTextView = (TextView) convertView.findViewById(R.id.hue_textview);
                 convertView.setTag(holder);
             } else {
-                holder = (ViewHolder)convertView.getTag();
+                holder = (ViewHolder) convertView.getTag();
             }
-            try {
-                if(position < imageList.size()) {
-                    DBImage image = imageList.get(position);
-                    tmpBmp = MediaStore.Images.Media.getBitmap(cr, image.getUri());
-                    holder.hueImageView.setImageBitmap(tmpBmp);
-                    holder.hueTextView.setText(image.getTitle());
-                }
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
+            if (position < imageList.size()) {
+                DBImage image = imageList.get(position);
+                holder.hueImageView.setImageBitmap(bitmapList.get(position));
+                holder.hueTextView.setText(image.getTitle());
             }
 
             return convertView;
@@ -233,5 +232,17 @@ public class MainActivity extends AppCompatActivity {
 
     public boolean onSubmitQuery(String queryText) {
         return false;
+    }
+
+    public void updateBitMapList() {
+        bitmapList.clear();
+        for (DBImage image : imageList) {
+            try {
+                Bitmap tmpBmp = MediaStore.Images.Media.getBitmap(getContentResolver(), image.getUri());
+                bitmapList.add(tmpBmp);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }
