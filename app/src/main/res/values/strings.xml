@@ -3,4 +3,7 @@
     <string name="title_activity_main2">Main2Activity</string>
     <string name="uploading">Uploading Image ...</string>
     <string name="menu_search">search</string>
+    <string name="str_add_tag">Add Tag</string>
+    <string name="str_auto_tag">AUTO TAG</string>
+    <string name="str_tweet">Tweet</string>
 </resources>

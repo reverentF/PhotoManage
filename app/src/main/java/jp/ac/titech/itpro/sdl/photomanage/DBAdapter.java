@@ -7,7 +7,9 @@ package jp.ac.titech.itpro.sdl.photomanage;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import android.database.DatabaseUtils;
 import android.net.Uri;
@@ -32,7 +34,7 @@ public class DBAdapter {
     public static final String T_TAG_TABLE_NAME = "t_tag";
     public static final String T_TAG_COL_ID = "_id";
     public static final String T_TAG_COL_IMAGE_ID = "image_id";
-    public static final String T_TAG_COL_VALUE = "valule";
+    public static final String T_TAG_COL_VALUE = "valule"; //typo
     public static final String T_TAG_COL_LASTUPDATE = "update_ymdhi";
     //
     protected final Context context;
@@ -212,6 +214,7 @@ public class DBAdapter {
         }
         return tags;
     }
+
     public List<DBTag> getAllTagsByImageID(int image_id) {
         return this.getTagsByImageID(image_id, 0);
     }
@@ -220,16 +223,54 @@ public class DBAdapter {
         return db.query(T_IMAGE_TABLE_NAME, null, T_TAG_COL_ID + "=" + tag_id, null, null, null, null);
     }
 
+    //get tag list and number of tag
+    public Map<String, Integer> getTagList(){
+        String COL_COUNT_NAME = "count";
+        String sql = "";
+        sql += "SELECT count(*) AS " + COL_COUNT_NAME + ", " + T_TAG_COL_VALUE + " ";
+        sql += "FROM " + T_TAG_TABLE_NAME + " ";
+        sql += "GROUP BY " + T_TAG_COL_VALUE + " ";
+        sql += "ORDER BY " + COL_COUNT_NAME;
+
+        Map map = new HashMap<String, Integer>();
+        Cursor result = db.rawQuery(sql, null);
+        if(result.moveToFirst()){
+            do{
+                String value = result.getString(result.getColumnIndex(DBAdapter.T_TAG_COL_VALUE));
+                if(!map.containsKey(value)){
+                    map.put(value, 0);
+                }else{
+                    int cnt = (Integer) map.get(value);
+                    cnt++;
+                    map.put(value, cnt);
+                }
+            }while(result.moveToNext());
+        }
+
+        return map;
+    }
+
+    //check exists same tag_value for same image
+    public boolean existTagValue(int image_id, String tag_value){
+        String whereStr = T_TAG_COL_VALUE + "= '" + tag_value + "' ";
+        whereStr += " AND " + T_TAG_COL_IMAGE_ID + " = " + image_id;
+        return DatabaseUtils.queryNumEntries(db, T_TAG_TABLE_NAME, whereStr) > 0;
+    }
+
     //insert
     public void insertTag(int image_id, String value) {
         Date dateNow = new Date();
         SimpleDateFormat format = new SimpleDateFormat("yyyy/MM/dd/HH:mm");
 
-        ContentValues values = new ContentValues();
-        values.put(T_TAG_COL_IMAGE_ID, image_id);
-        values.put(T_TAG_COL_VALUE, value);
-        values.put(T_TAG_COL_LASTUPDATE, format.format(dateNow));
-        db.insertOrThrow(T_TAG_TABLE_NAME, null, values);
+        //同名のタグが同じ画像についていたら追加しない
+        if(!existTagValue(image_id, value)) {
+            ContentValues values = new ContentValues();
+            values.put(T_TAG_COL_IMAGE_ID, image_id);
+            value.replaceAll("\\s", "");
+            values.put(T_TAG_COL_VALUE, value);
+            values.put(T_TAG_COL_LASTUPDATE, format.format(dateNow));
+            db.insertOrThrow(T_TAG_TABLE_NAME, null, values);
+        }
     }
 
     //delete by image_id

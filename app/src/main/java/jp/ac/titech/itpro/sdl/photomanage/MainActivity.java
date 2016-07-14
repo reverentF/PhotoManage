@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.net.Uri;
 import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
@@ -26,12 +27,9 @@ import android.widget.BaseAdapter;
 import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -105,6 +103,7 @@ public class MainActivity extends AppCompatActivity {
         mSearchView.setQueryHint("search tags");
         mSearchView.setIconifiedByDefault(true);
         mSearchView.setSubmitButtonEnabled(true);
+        mSearchView.set
 
         //DBから画像の読み出し
         dbAdapter.open();
@@ -122,6 +121,8 @@ public class MainActivity extends AppCompatActivity {
     public void onResume() {
         super.onResume();
         dbAdapter.open();
+        updateDBImages();
+        loadDBImages();
     }
 
     //load Images with Tags from DB
@@ -179,8 +180,9 @@ public class MainActivity extends AppCompatActivity {
 
 
     private static class ViewHolder {
-        public ImageView hueImageView;
-        public TextView hueTextView;
+        public ImageView gridImageView;
+        public TextView gridTextView;
+        public TextView gridTagView;
     }
 
     // GridView用のCustomAdapter
@@ -202,16 +204,18 @@ public class MainActivity extends AppCompatActivity {
             if (convertView == null) {
                 convertView = mLayoutInflater.inflate(R.layout.grid_item, null);
                 holder = new ViewHolder();
-                holder.hueImageView = (ImageView) convertView.findViewById(R.id.hue_imageview);
-                holder.hueTextView = (TextView) convertView.findViewById(R.id.hue_textview);
+                holder.gridImageView = (ImageView) convertView.findViewById(R.id.grid_imageview);
+                holder.gridTextView = (TextView) convertView.findViewById(R.id.grid_textview);
+                holder.gridTagView = (TextView) convertView.findViewById(R.id.grid_tagview);
                 convertView.setTag(holder);
             } else {
                 holder = (ViewHolder) convertView.getTag();
             }
             if (position < imageList.size()) {
                 DBImage image = imageList.get(position);
-                holder.hueImageView.setImageBitmap(bitmapList.get(position));
-                holder.hueTextView.setText(image.getTitle());
+                holder.gridImageView.setImageBitmap(bitmapList.get(position));
+                holder.gridTextView.setText(image.getTitle());
+                holder.gridTagView.setText(DBTag.implodeTags(image.getTags(MAX_TAG), " "));
             }
 
             return convertView;

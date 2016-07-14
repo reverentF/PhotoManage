@@ -7,18 +7,24 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.google.android.gms.appindexing.Action;
@@ -42,7 +48,6 @@ import com.google.api.services.vision.v1.model.Image;
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -51,18 +56,18 @@ import static android.widget.Toast.makeText;
 
 public class imageDetailActivity extends Activity {
     static DBAdapter dbAdapter;
+    private LinearLayout mTagTopView;    // タグのコンテナview(上)
+    private LinearLayout mTagBottomView; // タグのコンテナview(下)
     private static final String TAG = imageDetailActivity.class.getSimpleName();
     DBImage image;
-    /**
-     * ATTENTION: This was auto-generated to implement the App Indexing API.
-     * See https://g.co/AppIndexing/AndroidStudio for more information.
-     */
     private GoogleApiClient client;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.image_detail);
+        mTagTopView = (LinearLayout)findViewById(R.id.tag_view_top);
+        mTagBottomView = (LinearLayout)findViewById(R.id.tag_view_bottom);
 
         // DB接続
         dbAdapter = new DBAdapter(this);
@@ -96,6 +101,8 @@ public class imageDetailActivity extends Activity {
                 Bitmap bmpImage = MediaStore.Images.Media.getBitmap(cr, image.getUri());
                 ImageView viewImage = (ImageView) findViewById(R.id.imageView);
                 viewImage.setImageBitmap(bmpImage);
+                TextView viewTitle = (TextView)findViewById(R.id.imageTitle);
+                viewTitle.setText(image.getTitle());
             }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -104,19 +111,61 @@ public class imageDetailActivity extends Activity {
         }
     }
 
+    //load & set all tags from DB
     private void loadTags() {
         //set tag
         image.updateTag(dbAdapter.getAllTagsByImageID(image.getId()));
         List<DBTag> tags = image.getAllTags();
-        TextView viewTags = (TextView) findViewById(R.id.tags);
-        viewTags.setText(DBTag.implodeTags(tags, " "));
+        setTagView(tags);
     }
 
+    private void setTagView(List<DBTag> tags){
+        mTagTopView.removeAllViews();
+        mTagBottomView.removeAllViews();
 
+        LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        int cnt = 0;
+        for(DBTag tag : tags){
+            View tagView = inflater.inflate(R.layout.tag, null);
+            Button tagButton = (Button) tagView.findViewById(R.id.button_tag_ic);
+            tagButton.setText(tag.getValue());
+            //set margin
+            //TODO XML側で設定したい(なんで効かない？)
+//            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams();
+//            params.setMargins(50,50,50,20);
+//            tagButton.setLayoutParams(params);
+            //set onClick (delete tag)
+            View.OnClickListener tagButtonClickListener = new View.OnClickListener() {
+                private int tag_id;
+                @Override
+                public void onClick(View v) {
+                    dbAdapter.deleteTag(tag_id);
+                    loadTags();
+                }
+                public View.OnClickListener setTagId(int tag_id){
+                    this.tag_id = tag_id;
+                    return this;
+                }
+            }.setTagId(tag.getId());
+            tagButton.setOnClickListener(tagButtonClickListener);
+            //set view to Linear List
+            if(cnt % 2 == 0){
+                mTagTopView.addView(tagView);
+            }else{
+                mTagBottomView.addView(tagView);
+            }
+            cnt++;
+        }
+    }
+
+    /****************************
+     * ClickListener of Buttons
+     ****************************/
     private View.OnClickListener addTagClickListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
             final EditText editView = new EditText(imageDetailActivity.this);
+            editView.setTextColor(ContextCompat.getColor(imageDetailActivity.this, android.R.color.holo_blue_dark));
             new AlertDialog.Builder(imageDetailActivity.this)
                     .setIcon(android.R.drawable.ic_dialog_info)
                     .setTitle("Edit New Tag")

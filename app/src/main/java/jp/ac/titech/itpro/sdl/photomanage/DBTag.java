@@ -30,6 +30,7 @@ public class DBTag {
     public String getValue(){
         return this.value;
     }
+    public int getId(){ return this.id; }
 
     //タグを整形して返す
     public static String implodeTags(List<DBTag> tags, String glue){
