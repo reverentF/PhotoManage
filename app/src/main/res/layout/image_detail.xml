@@ -49,7 +49,7 @@
                 android:textSize="30dp"
                 android:textStyle="bold" />
 
-            <ScrollView
+            <HorizontalScrollView
                 android:id="@+id/ScrollView"
                 android:layout_width="0dp"
                 android:layout_weight="0.9"
@@ -67,6 +67,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
                         android:layout_weight="0.5"
+                        android:padding="5dp"
                         android:animateLayoutChanges="true"
                         android:orientation="horizontal"></LinearLayout>
                     <LinearLayout
@@ -74,10 +75,11 @@
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
                         android:layout_weight="0.5"
+                        android:padding="5dp"
                         android:animateLayoutChanges="true"
                         android:orientation="horizontal"></LinearLayout>
                 </LinearLayout>
-            </ScrollView>
+            </HorizontalScrollView>
         </LinearLayout>
 
 

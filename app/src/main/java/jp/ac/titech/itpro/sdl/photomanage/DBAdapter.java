@@ -19,6 +19,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.provider.BaseColumns;
 import android.provider.MediaStore;
 
 public class DBAdapter {
@@ -220,7 +221,15 @@ public class DBAdapter {
     }
 
     public Cursor getTag(int tag_id) {
-        return db.query(T_IMAGE_TABLE_NAME, null, T_TAG_COL_ID + "=" + tag_id, null, null, null, null);
+        return db.query(T_TAG_TABLE_NAME, null, T_TAG_COL_ID + "=" + tag_id, null, null, null, null);
+    }
+
+    public Cursor getTagSuggestions(String query){
+        return db.query(T_TAG_TABLE_NAME,
+                        new String[]{T_TAG_COL_ID+" as "+BaseColumns._ID, T_TAG_COL_VALUE},
+                        T_TAG_COL_VALUE + " LIKE '%" + query + "%' ",
+                        null,
+                        T_TAG_COL_VALUE, null, null);
     }
 
     //get tag list and number of tag

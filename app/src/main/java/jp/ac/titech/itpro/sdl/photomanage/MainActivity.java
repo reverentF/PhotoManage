@@ -7,18 +7,22 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.database.MatrixCursor;
 import android.graphics.Bitmap;
-import android.graphics.Color;
 import android.net.Uri;
+import android.provider.BaseColumns;
 import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.CursorLoader;
+import android.support.v4.widget.CursorAdapter;
+import android.support.v4.widget.SimpleCursorAdapter;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatDelegate;
 import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -37,9 +41,11 @@ public class MainActivity extends AppCompatActivity {
     public static final int MAX_TAG = 3; //MainActivityで表示するタグの数
     GridView mGrid;
     SearchView mSearchView;
+    private SimpleCursorAdapter mSearchSuggestAdapter;
     static DBAdapter dbAdapter;
     static List<DBImage> imageList;
     static List<Bitmap> bitmapList;
+    static Cursor suggestCursor;
 
     myAdapter gridAdapter;
 
@@ -79,6 +85,7 @@ public class MainActivity extends AppCompatActivity {
         /*
          *  Search View
          */
+        //TODO 長いのでfunction化
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         toolbar.inflateMenu(R.menu.search_view);
 
@@ -96,6 +103,11 @@ public class MainActivity extends AppCompatActivity {
                 if (s.equals("")) {
                     //入力が空 -> 全表示
                     loadDBImages();
+                }else{
+                    //入力内容からタグの候補をDBから取得
+                    Cursor c = dbAdapter.getTagSuggestions(s);
+                    suggestCursor = c;
+                    mSearchSuggestAdapter.changeCursor(c);
                 }
                 return false;
             }
@@ -103,7 +115,36 @@ public class MainActivity extends AppCompatActivity {
         mSearchView.setQueryHint("search tags");
         mSearchView.setIconifiedByDefault(true);
         mSearchView.setSubmitButtonEnabled(true);
-        mSearchView.set
+        mSearchView.setQueryRefinementEnabled(true);
+        final String[] from = new String[] {DBAdapter.T_TAG_COL_VALUE};
+        final int[] to = new int[] {android.R.id.text1};
+        mSearchSuggestAdapter = new SimpleCursorAdapter(this,
+                android.R.layout.simple_list_item_1,
+                null,
+                from,
+                to,
+                CursorAdapter.FLAG_REGISTER_CONTENT_OBSERVER);
+        mSearchView.setSuggestionsAdapter(mSearchSuggestAdapter);
+        //検索候補選択時のListener
+        mSearchView.setOnSuggestionListener(new SearchView.OnSuggestionListener() {
+            @Override
+            public boolean onSuggestionClick(int position) {
+                suggestCursor.moveToPosition(position);
+                String tag = suggestCursor.getString(suggestCursor.getColumnIndex(DBAdapter.T_TAG_COL_VALUE));
+                mSearchView.setQuery(tag, true);
+                return true;
+            }
+
+            @Override
+            public boolean onSuggestionSelect(int position) {
+                suggestCursor.moveToPosition(position);
+                String tag = suggestCursor.getString(suggestCursor.getColumnIndex(DBAdapter.T_TAG_COL_VALUE));
+                mSearchView.setQuery(tag, true);
+                return true;
+            }
+        });
+
+
 
         //DBから画像の読み出し
         dbAdapter.open();
