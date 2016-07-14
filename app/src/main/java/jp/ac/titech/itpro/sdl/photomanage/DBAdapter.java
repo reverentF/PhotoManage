@@ -271,11 +271,11 @@ public class DBAdapter {
         Date dateNow = new Date();
         SimpleDateFormat format = new SimpleDateFormat("yyyy/MM/dd/HH:mm");
 
+        value = value.replaceAll("\\s", ""); //空白文字を削除
         //同名のタグが同じ画像についていたら追加しない
         if(!existTagValue(image_id, value)) {
             ContentValues values = new ContentValues();
             values.put(T_TAG_COL_IMAGE_ID, image_id);
-            value.replaceAll("\\s", "");
             values.put(T_TAG_COL_VALUE, value);
             values.put(T_TAG_COL_LASTUPDATE, format.format(dateNow));
             db.insertOrThrow(T_TAG_TABLE_NAME, null, values);
