@@ -204,10 +204,13 @@ public class MainActivity extends AppCompatActivity {
         Cursor cursor = new CursorLoader(getApplicationContext(), MediaStore.Images.Media.EXTERNAL_CONTENT_URI, null, null, null, null).loadInBackground();
         cursor.moveToFirst();
 
+        //TODO 画像の削除処理が泥臭いので再考
+        List<String> titles = new ArrayList<String>();
         do {
             //タイトルを取得
             int titleCol = cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME);
             String title = cursor.getString(titleCol);
+            titles.add(title);
             if (!dbAdapter.ExistsImage(title)) {
                 //カラムIDの取得
                 int fieldCol = cursor.getColumnIndex(MediaStore.Images.Media._ID);
@@ -217,6 +220,7 @@ public class MainActivity extends AppCompatActivity {
                 dbAdapter.insertImage(bmpUri, title);
             }
         } while (cursor.moveToNext());
+        dbAdapter.deleteNotExistsImages(titles);
     }
 
 

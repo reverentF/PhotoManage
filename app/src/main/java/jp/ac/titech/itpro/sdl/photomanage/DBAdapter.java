@@ -193,6 +193,39 @@ public class DBAdapter {
         return db.delete(T_IMAGE_TABLE_NAME, T_IMAGE_COL_ID + "=" + image_id, null) > 0;
     }
 
+    //端末内から消えた画像の情報をDBから削除
+    // @param exists_titles 端末内にある画像のタイトル
+    // @return 削除した画像の数
+    public int deleteNotExistsImages(List<String> exists_titles){
+        String whereStr = "";
+        boolean isFirst = true;
+
+        //削除対象のimage_idを取得する
+        List<Integer> target_image_ids = new ArrayList<Integer>();
+        for(String exists_title : exists_titles){
+            if(!isFirst){
+                whereStr += " AND ";
+            }else{
+                isFirst = false;
+            }
+            whereStr += T_IMAGE_COL_TITLE + " != '" + exists_title + "' ";
+        }
+        Cursor cursor = db.query(T_IMAGE_TABLE_NAME, null, whereStr, null, null, null, null);
+        if(!cursor.moveToNext()){
+            return 0;
+        }else{
+            int image_id = cursor.getInt(cursor.getColumnIndex(DBAdapter.T_IMAGE_COL_ID));
+            target_image_ids.add(image_id);
+        }
+        if(!target_image_ids.isEmpty()){
+            for(int image_id : target_image_ids){
+                deleteImage(image_id);
+            }
+        }
+
+        return target_image_ids.size();
+    }
+
     /*
      *  Methods for t_tag
      */
